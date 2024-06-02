@@ -27,8 +27,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Add the new WebSocket connection to the global clients slice
 	connection := &Connection{
-		ID:   uuid.New().String(),
-		Conn: conn,
+		ID:     uuid.New().String(),
+		Conn:   conn,
+		Events: []string{},
 	}
 	connectionsMutex.Lock()
 	Connections = append(Connections, connection)
