@@ -1,0 +1,6 @@
+services:
+  ws:
+    build: .
+    ports:
+      - "3399:3399"
+    restart: always
