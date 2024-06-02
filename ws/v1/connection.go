@@ -69,14 +69,17 @@ func (c *Connection) ReadMessage() {
 	}
 }
 
-func (c *Connection) SendToEvent(event string, data any) {
+func (c *Connection) SendToEvent(action string, event string, data any) {
 	for i := 0; i < len(Connections); i++ {
 		connection := Connections[i]
 		if connection.HasEvent(event) {
-			connection.Send(&EventDataDTO{
-				ConnectionID: c.ID,
-				Event:        event,
-				Data:         data,
+			connection.Send(&WebsocketActionDTO{
+				Action: action,
+				Data: &EventDataDTO{
+					ConnectionID: c.ID,
+					Event:        event,
+					Data:         data,
+				},
 			})
 		}
 	}
@@ -85,43 +88,52 @@ func (c *Connection) SendToEvent(event string, data any) {
 func handleWebsocketAction(c *Connection, action WebsocketActionDTO) {
 	switch action.Action {
 	case "id":
-		c.Send(&ValueDTO[string]{
-			Value: c.ID,
+		c.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   c.ID,
 		})
 	case "ping":
-		c.Send(&ValueDTO[string]{
-			Value: "pong",
+		c.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   "pong",
 		})
 	case "add event":
 		event, ok := action.Data.(string)
 		if !ok {
 			errMsg := "Invalid data type for add event"
 			log.Println(errMsg)
-			c.Send(&ValueDTO[string]{
-				Value: errMsg,
+			c.Send(&WebsocketActionDTO{
+				Action: action.Action,
+				Data:   errMsg,
 			})
 		}
 
 		c.AddEvent(event)
-		c.Send(&ValueDTO[string]{
-			Value: "added",
+		c.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   "added",
 		})
 	case "remove event":
 		event, ok := action.Data.(string)
 		if !ok {
 			errMsg := "Invalid data type for remove event"
 			log.Println(errMsg)
-			c.Send(&ValueDTO[string]{
-				Value: errMsg,
+			c.Send(&WebsocketActionDTO{
+				Action: action.Action,
+				Data:   errMsg,
 			})
 		}
 
 		c.RemoveEvent(event)
-		c.Send(&ValueDTO[string]{
-			Value: "removed",
+		c.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   "removed",
 		})
 	case "events":
-		c.Send(c.Events)
+		c.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   c.Events,
+		})
 	case "send to event":
 		data := action.Data.(map[string]any)
 		event, eventOK := data["event"].(string)
@@ -129,16 +141,18 @@ func handleWebsocketAction(c *Connection, action WebsocketActionDTO) {
 		if !eventOK {
 			errMsg := "Invalid data type for send to event"
 			log.Println(errMsg)
-			c.Send(&ValueDTO[string]{
-				Value: errMsg,
+			c.Send(&WebsocketActionDTO{
+				Action: action.Action,
+				Data:   errMsg,
 			})
 		}
 
-		c.SendToEvent(event, data["data"])
+		c.SendToEvent(action.Action, event, data["data"])
 	default:
 		errMsg := fmt.Sprintf("Unknown action: %s", action.Action)
-		c.Send(&ValueDTO[string]{
-			Value: errMsg,
+		c.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   errMsg,
 		})
 		log.Printf(errMsg)
 	}

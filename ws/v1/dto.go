@@ -5,17 +5,8 @@ type WebsocketActionDTO struct {
 	Data   any    `json:"data"`
 }
 
-type ValueDTO[T any] struct {
-	Value T `json:"value"`
-}
-
 type EventDataDTO struct {
 	ConnectionID string `json:"connection_id"`
 	Event        string `json:"event"`
 	Data         any    `json:"data"`
-}
-
-type SendToEventDataDTO struct {
-	Event string `json:"event"`
-	Data  any    `json:"data"`
 }
