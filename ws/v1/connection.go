@@ -4,29 +4,36 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
+	"strings"
+
+	"github.com/gorilla/websocket"
 )
 
 // Connection holds the websocket connection and events of interest
 type Connection struct {
-	ID          string
-	Conn        *websocket.Conn
+	ID               string
+	ApplicationName  string
+	Conn             *websocket.Conn
 	SubscribedEvents []string
 }
 
 // AddEvent subscribes the connection to a specific event
 func (connection *Connection) AddEvent(eventName string) {
-	if connection.HasEvent(eventName) {
+	eventNameWithApplicationName := fmt.Sprintf("%s:%s", connection.ApplicationName, eventName)
+
+	if connection.HasEvent(eventNameWithApplicationName) {
 		return
 	}
-	connection.SubscribedEvents = append(connection.SubscribedEvents, eventName)
+	connection.SubscribedEvents = append(connection.SubscribedEvents, eventNameWithApplicationName)
 }
 
 // RemoveEvent unsubscribes the connection from a specific event
 func (connection *Connection) RemoveEvent(eventName string) {
+	eventNameWithApplicationName := fmt.Sprintf("%s:%s", connection.ApplicationName, eventName)
+
 	for i, e := range connection.SubscribedEvents {
-		if e == eventName {
+		if e == eventNameWithApplicationName {
 			connection.SubscribedEvents = append(connection.SubscribedEvents[:i], connection.SubscribedEvents[i+1:]...)
 			return
 		}
@@ -35,8 +42,10 @@ func (connection *Connection) RemoveEvent(eventName string) {
 
 // HasEvent checks if the connection is already subscribed to an event
 func (connection *Connection) HasEvent(eventName string) bool {
+	eventNameWithApplicationName := fmt.Sprintf("%s:%s", connection.ApplicationName, eventName)
+
 	for _, e := range connection.SubscribedEvents {
-		if e == eventName {
+		if e == eventNameWithApplicationName {
 			return true
 		}
 	}
@@ -78,9 +87,11 @@ func (connection *Connection) ReadMessage() {
 
 // SendToEvent sends data to all connections subscribed to the specified event
 func (connection *Connection) SendToEvent(actionType string, eventName string, payload any) {
-	for i := 0; i < len(Connections); i++ {
-		otherConnection := Connections[i]
-		if otherConnection.HasEvent(eventName) {
+	eventNameWithApplicationName := fmt.Sprintf("%s:%s", connection.ApplicationName, eventName)
+
+	for i := 0; i < len(activeConnections); i++ {
+		otherConnection := activeConnections[i]
+		if otherConnection.HasEvent(eventNameWithApplicationName) {
 			otherConnection.Send(&WebsocketActionDTO{
 				Action: actionType,
 				Data: &EventDataDTO{
@@ -95,7 +106,7 @@ func (connection *Connection) SendToEvent(actionType string, eventName string, p
 
 // handleWebsocketAction routes the incoming action to the appropriate handler
 func handleWebsocketAction(connection *Connection, action WebsocketActionDTO) {
-	switch action.Action {
+	switch strings.ToLower(action.Action) {
 	case "id":
 		connection.Send(&WebsocketActionDTO{
 			Action: action.Action,
@@ -105,6 +116,24 @@ func handleWebsocketAction(connection *Connection, action WebsocketActionDTO) {
 		connection.Send(&WebsocketActionDTO{
 			Action: action.Action,
 			Data:   "pong",
+		})
+	case "application":
+		applicationName, ok := action.Data.(string)
+
+		if !ok {
+			errMsg := "Invalid data type for application"
+			log.Println(errMsg)
+			connection.Send(&WebsocketActionDTO{
+				Action: action.Action,
+				Data:   errMsg,
+			})
+			return
+		}
+
+		connection.ApplicationName = applicationName
+		connection.Send(&WebsocketActionDTO{
+			Action: action.Action,
+			Data:   "application name set to " + applicationName,
 		})
 	case "add event":
 		eventName, ok := action.Data.(string)

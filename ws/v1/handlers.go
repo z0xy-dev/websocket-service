@@ -1,17 +1,18 @@
 package v1
 
 import (
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"sync"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 // upgrader is used to upgrade HTTP connections to WebSocket connections
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  4096,
+	WriteBufferSize: 4096,
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
@@ -30,9 +31,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new WebSocket connection object
 	connection := &Connection{
-		ID:     uuid.New().String(),
-		Conn:   wsConn,
-		Events: []string{},
+		ID:               uuid.New().String(),
+		Conn:             wsConn,
+		SubscribedEvents: []string{},
 	}
 
 	// Add the new WebSocket connection to the global activeConnections slice
