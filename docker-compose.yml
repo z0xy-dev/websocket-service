@@ -1,6 +1,10 @@
 services:
-  ws:
+  # This service runs the WebSocket application
+  app:
+    # Build the Docker image from the current directory
     build: .
+    # Map host port 3399 to container port 3399
     ports:
       - "3399:3399"
+    # Ensure the container always restarts if stopped
     restart: always
